@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package raft;
+
+service RaftNode {
+  // Q3: 选举相关
+  rpc RequestVote (RequestVoteRequest) returns (RequestVoteReply);
+
+  // Q3 + Q4: 心跳 + 日志复制
+  rpc AppendEntries (AppendEntriesRequest) returns (AppendEntriesReply);
+
+  // Q4: 客户端请求操作 o
+  rpc ClientRequest (ClientRequestMessage) returns (ClientReplyMessage);
+}
+
+// ============ 选举相关（Q3） ============
+message RequestVoteRequest {
+  int32 term = 1;
+  int32 candidate_id = 2;
+}
+
+message RequestVoteReply {
+  int32 term = 1;
+  bool vote_granted = 2;
+}
+
+// ============ 日志结构（Q4） ============
+message LogEntry {
+  int32 index = 1;       // k+1
+  int32 term = 2;        // t
+  string operation = 3;  // o
+}
+
+// ============ AppendEntries（心跳 + 日志复制） ============
+message AppendEntriesRequest {
+  int32 term = 1;
+  int32 leader_id = 2;
+  repeated LogEntry entries = 3;   // leader 的“整个日志”
+  int32 commit_index = 4;          // c：最近提交的日志索引
+}
+
+message AppendEntriesReply {
+  int32 term = 1;
+  bool success = 2;
+  int32 follower_id = 3;
+}
+
+// ============ 客户端请求 ============
+message ClientRequestMessage {
+  int32 client_id = 1;      // 简化：客户端 id（随便给）
+  string operation = 2;     // 操作 o（字符串）
+}
+
+message ClientReplyMessage {
+  bool success = 1;
+  string message = 2;
+  int32 leader_id = 3;      // 如果不是 leader，可以告诉 client 当前 leader
+}
