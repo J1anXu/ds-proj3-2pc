@@ -146,6 +146,17 @@ services:
     expose:
       - "50051"
 
+  node6:
+    profiles: ["optional"]
+    build:
+      context: .
+      dockerfile: Dockerfile.grpc
+    container_name: node6
+    environment:
+      - NODE_ID=6
+    command: ["python", "raft_node.py"]
+    expose:
+      - "50051"
 
 volumes:
   phu-mongo-volume:
