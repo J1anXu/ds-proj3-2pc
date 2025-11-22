@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Client</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='/stylesheet/home_style.css') }}">
+</head>
+<body>
+    <div id="action-container">
+        <h1>Welcome! Please connect to the server (port 5000).</h1>
+    </div>
+
+    <div class="menu-container">
+        <button id="gatcha-btn" class="menu-button" data-endpoint="gatcha">Gatcha</button>
+        <button id="inventory-btn" class="menu-button" data-endpoint="inventory">Inventory</button>
+        <button id="battle-btn" class="menu-button" data-endpoint="battle">Battle</button>
+        <button id="trade-btn" class="menu-button" data-endpoint="trade">Trade</button>
+        <a id="logout-btn" class="menu-button" href="/logout">Logout</a> 
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script> 
+    <script type="module" src="{{ url_for('static', filename='/script/main.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package consensus;
+
+// ============ VOTE PHASE ============
+message VoteRequest {
+  string tx_id = 1;
+  int32 sender_id = 2;
+}
+
+message VoteResponse {
+  string tx_id = 1;
+  string vote = 2; // "commit" or "abort"
+}
+
+// ============ DECISION PHASE ============
+message GlobalDecisionRequest {
+  string tx_id = 1;
+  string decision = 2; // "commit" or "abort"
+  int32 sender_id = 3;
+}
+
+message Ack {
+  string tx_id = 1;
+  string status = 2; // "received"
+}
+
+// ============ SERVICE ============
+service ConsensusService {
+  rpc Vote(VoteRequest) returns (VoteResponse);
+  rpc GlobalDecision(GlobalDecisionRequest) returns (Ack);
+  rpc SelfDecision(GlobalDecisionRequest) returns (Ack);
+}

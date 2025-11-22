@@ -1,0 +1,9 @@
+Flask					# The web framework
+Flask-PyMongo			# For MongoDB integration
+Flask-Cors		 		# For handling resources from different servers/ports
+Flask-SocketIO		 	# For real-time communication	
+Flask-Session		 	# For server-side sessions
+gunicorn                 # The production WSGI server. Needed for both app-core and app-realtime
+eventlet                 # The official, most stable worker for Flask-SocketIO
+redis                    # Python client for Flask-Session
+requests

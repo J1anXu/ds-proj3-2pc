@@ -1,0 +1,152 @@
+version: "3.8"
+
+services:
+  # ========================================
+  # 1. API Gateway / Load Balancer
+  # ========================================
+  nginx:
+    image: nginx:stable-alpine
+    container_name: phu-nginx
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app-core
+      - app-realtime
+      - redis
+
+  # ========================================
+  # 2. Core Backend (Flask — HTTP)
+  # ========================================
+  app-core:
+    build:
+      context: .
+      dockerfile: Dockerfile         # ⭐ 使用你的原来 Flask Dockerfile
+    container_name: phu-app-core
+    environment:
+      - FLASK_APP=app.py
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/PokemonNexusDB?authSource=admin
+      - SECRET_KEY=secret123
+      - SESSION_TYPE=redis
+      - SESSION_REDIS=redis://redis:6379/1
+    depends_on:
+      - mongodb
+      - redis
+    command: gunicorn -w 4 -b 0.0.0.0:5000 app:app
+    expose:
+      - "5000"
+
+  # ========================================
+  # 3. Real-Time Backend (WebSockets)
+  # ========================================
+  app-realtime:
+    build:
+      context: .
+      dockerfile: Dockerfile         # ⭐ 使用原来的 Dockerfile
+    container_name: phu-app-realtime
+    environment:
+      - FLASK_APP=app.py
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/PokemonNexusDB?authSource=admin
+      - SECRET_KEY=secret123
+      - SESSION_TYPE=redis
+      - SESSION_REDIS=redis://redis:6379/1
+    depends_on:
+      - mongodb
+      - redis
+    command: gunicorn -k eventlet -w 1 --bind 0.0.0.0:5001 --timeout 300 --keep-alive 65 --log-level debug app:app
+    expose:
+      - "5001"
+
+  # ========================================
+  # 4. Redis / MongoDB
+  # ========================================
+  redis:
+    image: redis:latest
+    container_name: phu-redis
+    restart: always
+    command: redis-server --bind 0.0.0.0
+    volumes:
+      - phu-redis-volume:/data
+    expose:
+      - "6379"
+
+  mongodb:
+    image: mongo:latest
+    container_name: phu-mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - phu-mongo-volume:/data/db
+    expose:
+      - "27017"
+
+  # ========================================
+  # 5. ⭐ 2PC Nodes (Coordinator + Participants)
+  # ========================================
+  node1:
+    build:
+      context: .
+      dockerfile: Dockerfile.grpc      # ⭐ 使用 gRPC Dockerfile
+    container_name: node1
+    environment:
+      - NODE_ID=1
+    command: python coordinator.py
+    ports:
+      - "9001:50051"
+    depends_on:
+      - node2
+      - node3
+      - node4
+      - node5
+
+  node2:
+    build:
+      context: .
+      dockerfile: Dockerfile.grpc
+    container_name: node2
+    environment:
+      - NODE_ID=2
+    command: python consensus_server.py
+    expose:
+      - "50051"
+
+  node3:
+    build:
+      context: .
+      dockerfile: Dockerfile.grpc
+    container_name: node3
+    environment:
+      - NODE_ID=3
+    command: python consensus_server.py
+    expose:
+      - "50051"
+
+  node4:
+    build:
+      context: .
+      dockerfile: Dockerfile.grpc
+    container_name: node4
+    environment:
+      - NODE_ID=4
+    command: python consensus_server.py
+    expose:
+      - "50051"
+
+  node5:
+    build:
+      context: .
+      dockerfile: Dockerfile.grpc
+    container_name: node5
+    environment:
+      - NODE_ID=5
+    command: python consensus_server.py
+    expose:
+      - "50051"
+
+volumes:
+  phu-mongo-volume:
+  phu-redis-volume:
