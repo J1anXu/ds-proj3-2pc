@@ -7,3 +7,9 @@ gunicorn                 # The production WSGI server. Needed for both app-core 
 eventlet                 # The official, most stable worker for Flask-SocketIO
 redis                    # Python client for Flask-Session
 requests
+flask
+flask-cors
+pymongo
+flask-pymongo
+eventlet
+gunicorn

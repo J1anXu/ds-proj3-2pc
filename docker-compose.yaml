@@ -85,23 +85,22 @@ services:
       - "27017"
 
   # ========================================
-  # 5. ⭐ 2PC Nodes (Coordinator + Participants)
+  # 5. ⭐ Raft 领导者选举节点（5 个）
   # ========================================
+
   node1:
     build:
       context: .
-      dockerfile: Dockerfile.grpc      # ⭐ 使用 gRPC Dockerfile
+      dockerfile: Dockerfile.grpc
     container_name: node1
     environment:
       - NODE_ID=1
-    command: python coordinator.py
+    command: ["python", "raft_node.py"]
     ports:
-      - "9001:50051"
+      - "9001:50051"   # 把 node1 暴露出来，方便以后 curl 或调试
     depends_on:
-      - node2
-      - node3
-      - node4
-      - node5
+      - mongodb
+      - redis
 
   node2:
     build:
@@ -110,7 +109,7 @@ services:
     container_name: node2
     environment:
       - NODE_ID=2
-    command: python consensus_server.py
+    command: ["python", "raft_node.py"]
     expose:
       - "50051"
 
@@ -121,7 +120,7 @@ services:
     container_name: node3
     environment:
       - NODE_ID=3
-    command: python consensus_server.py
+    command: ["python", "raft_node.py"]
     expose:
       - "50051"
 
@@ -132,7 +131,7 @@ services:
     container_name: node4
     environment:
       - NODE_ID=4
-    command: python consensus_server.py
+    command: ["python", "raft_node.py"]
     expose:
       - "50051"
 
@@ -143,9 +142,10 @@ services:
     container_name: node5
     environment:
       - NODE_ID=5
-    command: python consensus_server.py
+    command: ["python", "raft_node.py"]
     expose:
       - "50051"
+
 
 volumes:
   phu-mongo-volume:
