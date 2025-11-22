@@ -18,7 +18,7 @@ def find_current_leader():
     output = run_cmd("docker compose logs --tail=500")
 
     # pattern: Node X becomes LEADER
-    matches = re.findall(r"Node (\d+) becomes LEADER", output)
+    matches = re.findall(r"Node (\d+) becomes LEADER👑", output)
 
     if not matches:
         print("❌ No leader found in logs!")
@@ -46,7 +46,7 @@ def check_new_election():
 
     # Find nodes sending RequestVote
     req_vote = re.findall(r"Node (\d+) sends RPC RequestVote", output)
-    leaders = re.findall(r"Node (\d+) becomes LEADER", output)
+    leaders = re.findall(r"Node (\d+) becomes LEADER👑", output)
 
     print("\n📌 RequestVote activity:")
     for node in set(req_vote):
