@@ -13,3 +13,5 @@ pymongo
 flask-pymongo
 eventlet
 gunicorn
+grpcio
+grpcio-tools

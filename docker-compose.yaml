@@ -1,9 +1,4 @@
-version: "3.8"
-
 services:
-  # ========================================
-  # 1. API Gateway / Load Balancer
-  # ========================================
   nginx:
     image: nginx:stable-alpine
     container_name: phu-nginx
@@ -17,58 +12,52 @@ services:
       - app-realtime
       - redis
 
-  # ========================================
-  # 2. Core Backend (Flask — HTTP)
-  # ========================================
   app-core:
     build:
-      context: .
-      dockerfile: Dockerfile         # ⭐ 使用你的原来 Flask Dockerfile
+      context: ./web
+      dockerfile: Dockerfile
     container_name: phu-app-core
     environment:
       - FLASK_APP=app.py
-      - MONGO_URI=mongodb://admin:password@mongodb:27017/PokemonNexusDB?authSource=admin
       - SECRET_KEY=secret123
       - SESSION_TYPE=redis
       - SESSION_REDIS=redis://redis:6379/1
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/PokemonNexusDB?authSource=admin
+      - ROLE=coordinator
+      - PARTICIPANTS=phu-app-realtime
+      - NODE_ID=1
+    command: ["python", "app.py"]
+    ports:
+      - "9002:5000"
     depends_on:
-      - mongodb
       - redis
-    command: gunicorn -w 4 -b 0.0.0.0:5000 app:app
-    expose:
-      - "5000"
+      - mongodb
 
-  # ========================================
-  # 3. Real-Time Backend (WebSockets)
-  # ========================================
   app-realtime:
     build:
-      context: .
-      dockerfile: Dockerfile         # ⭐ 使用原来的 Dockerfile
+      context: ./web
+      dockerfile: Dockerfile
     container_name: phu-app-realtime
     environment:
       - FLASK_APP=app.py
-      - MONGO_URI=mongodb://admin:password@mongodb:27017/PokemonNexusDB?authSource=admin
       - SECRET_KEY=secret123
       - SESSION_TYPE=redis
       - SESSION_REDIS=redis://redis:6379/1
-    depends_on:
-      - mongodb
-      - redis
-    command: gunicorn -k eventlet -w 1 --bind 0.0.0.0:5001 --timeout 300 --keep-alive 65 --log-level debug app:app
+      - MONGO_URI=mongodb://admin:password@mongodb:27017/PokemonNexusDB?authSource=admin
+      - ROLE=participant
+      - NODE_ID=2
+    command: ["python", "app.py"]
     expose:
-      - "5001"
+      - "5000"
+    depends_on:
+      - redis
+      - mongodb
 
-  # ========================================
-  # 4. Redis / MongoDB
-  # ========================================
   redis:
     image: redis:latest
     container_name: phu-redis
     restart: always
     command: redis-server --bind 0.0.0.0
-    volumes:
-      - phu-redis-volume:/data
     expose:
       - "6379"
 
@@ -77,16 +66,10 @@ services:
     container_name: phu-mongodb
     restart: always
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password
-    volumes:
-      - phu-mongo-volume:/data/db
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
     expose:
       - "27017"
-
-  # ========================================
-  # 5. ⭐ Raft 领导者选举节点（5 个）
-  # ========================================
 
   node1:
     build:
@@ -97,10 +80,7 @@ services:
       - NODE_ID=1
     command: ["python", "raft_node.py"]
     ports:
-      - "9001:50051"   # 把 node1 暴露出来，方便以后 curl 或调试
-    depends_on:
-      - mongodb
-      - redis
+      - "9001:50051"
 
   node2:
     build:
@@ -110,8 +90,6 @@ services:
     environment:
       - NODE_ID=2
     command: ["python", "raft_node.py"]
-    expose:
-      - "50051"
 
   node3:
     build:
@@ -121,8 +99,6 @@ services:
     environment:
       - NODE_ID=3
     command: ["python", "raft_node.py"]
-    expose:
-      - "50051"
 
   node4:
     build:
@@ -132,8 +108,6 @@ services:
     environment:
       - NODE_ID=4
     command: ["python", "raft_node.py"]
-    expose:
-      - "50051"
 
   node5:
     build:
@@ -143,20 +117,6 @@ services:
     environment:
       - NODE_ID=5
     command: ["python", "raft_node.py"]
-    expose:
-      - "50051"
-
-  node6:
-    profiles: ["optional"]
-    build:
-      context: .
-      dockerfile: Dockerfile.grpc
-    container_name: node6
-    environment:
-      - NODE_ID=6
-    command: ["python", "raft_node.py"]
-    expose:
-      - "50051"
 
 volumes:
   phu-mongo-volume:

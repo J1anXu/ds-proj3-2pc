@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package twopc;
+
+// ============= Decision Phase =============
+service DecisionService {
+  rpc GlobalCommit (DecisionRequest) returns (DecisionReply);
+  rpc GlobalAbort  (DecisionRequest) returns (DecisionReply);
+}
+
+message DecisionRequest {
+  string tx_id = 1;
+}
+
+message DecisionReply {
+  string status = 1;
+}
