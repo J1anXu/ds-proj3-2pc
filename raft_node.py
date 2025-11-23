@@ -93,6 +93,11 @@ class RaftNode(raft_pb2_grpc.RaftNodeServicer):
             success=True,
             follower_id=self.node_id
         )
+
+
+    # -------------------------------------------------------------
+    # RPC：ClientRequest
+    # -------------------------------------------------------------
     def ClientRequest(self, request, context):
         print(
             f"Node {self.node_id} runs RPC ClientRequest called by client {request.client_id}"
@@ -195,7 +200,6 @@ class RaftNode(raft_pb2_grpc.RaftNodeServicer):
 
                 stub = raft_pb2_grpc.RaftNodeStub(grpc.insecure_channel(address))
 
-                # Send full log
                 entries = [
                     raft_pb2.LogEntry(
                         index=e["index"],
@@ -225,9 +229,15 @@ class RaftNode(raft_pb2_grpc.RaftNodeServicer):
             time.sleep(0.1)
 
             with self.lock:
+
+                # 🔧 FIX: 如果已经是 leader，就不要再发起选举
+                if self.state == LEADER:
+                    continue
+
                 if time.time() < self.election_timeout:
                     continue
 
+                # 成为候选人
                 self.state = CANDIDATE
                 self.current_term += 1
                 self.voted_for = self.node_id

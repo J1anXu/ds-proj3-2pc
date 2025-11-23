@@ -31,11 +31,18 @@ def find_current_leader():
     return leader_node
 
 
-def kill_leader(leader_node):
-    """Kill leader container."""
-    print(f"\n💥 Killing leader: {leader_node}")
-    print(run_cmd(f"docker compose kill {leader_node}"))
-    time.sleep(2)  # wait for others to detect failure
+def kill_leader(node):
+    print(f"\n💥 Stopping leader {node} to trigger election...")
+    run_cmd(f"docker stop {node}")
+
+    print("⏳ Waiting 5 seconds so followers start election...")
+    time.sleep(5)
+
+    print(f"🔄 Restarting leader {node} ...")
+    run_cmd(f"docker start {node}")
+
+    # give it time to rejoin cluster
+    time.sleep(2)
 
 
 def check_new_election():
