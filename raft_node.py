@@ -1,11 +1,14 @@
+import sys
+sys.path.append("./proto")
+
 import grpc
 import time
 import threading
 import random
 from concurrent import futures
 
-import raft_pb2
-import raft_pb2_grpc
+from proto import raft_pb2, raft_pb2_grpc
+
 
 
 FOLLOWER = 0
@@ -90,6 +93,82 @@ class RaftNode(raft_pb2_grpc.RaftNodeServicer):
             success=True,
             follower_id=self.node_id
         )
+    def ClientRequest(self, request, context):
+        print(
+            f"Node {self.node_id} runs RPC ClientRequest called by client {request.client_id}"
+        )
+
+        with self.lock:
+            # 不是 Leader → 告诉 client 现在谁是 leader
+            if self.state != LEADER:
+                return raft_pb2.ClientReplyMessage(
+                    success=False,
+                    message="Not leader",
+                    leader_id=self.node_id if self.state == LEADER else -1
+                )
+
+            # Leader 接受客户端操作 o
+            new_index = len(self.log)
+            entry = {
+                "index": new_index,
+                "term": self.current_term,
+                "operation": request.operation
+            }
+            self.log.append(entry)
+
+            print(
+                f"Node {self.node_id} LEADER accepted op='{request.operation}' "
+                f"as index={new_index}"
+            )
+
+        # 复制到所有 follower
+        acks = 1
+        entries_proto = [
+            raft_pb2.LogEntry(
+                index=e["index"],
+                term=e["term"],
+                operation=e["operation"]
+            )
+            for e in self.log
+        ]
+
+        for peer_id, address in self.peers.items():
+            try:
+                stub = raft_pb2_grpc.RaftNodeStub(grpc.insecure_channel(address))
+                reply = stub.AppendEntries(
+                    raft_pb2.AppendEntriesRequest(
+                        term=self.current_term,
+                        leader_id=self.node_id,
+                        entries=entries_proto,
+                        commit_index=self.commit_index
+                    )
+                )
+                if reply.success:
+                    acks += 1
+            except Exception as e:
+                print(f"Leader failed AppendEntries to Node {peer_id}: {e}")
+
+        # 判断是否多数派
+        if self.is_majority(acks):
+            with self.lock:
+                self.commit_index = len(self.log) - 1
+                print(
+                    f"Node {self.node_id} committed op='{request.operation}' "
+                    f"at index={self.commit_index}"
+                )
+
+            return raft_pb2.ClientReplyMessage(
+                success=True,
+                message="Operation committed",
+                leader_id=self.node_id
+            )
+
+        else:
+            return raft_pb2.ClientReplyMessage(
+                success=False,
+                message="Failed to reach majority",
+                leader_id=self.node_id
+            )
 
     # -------------------------------------------------------------
     # RPC server
